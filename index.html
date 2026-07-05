@@ -1048,11 +1048,17 @@ function draw(){
     const wa=Math.max(0,1-f.age/(f.life*1.8));
     if(wa<=0)return;
     const ry=horizonY+(horizonY-f.y)*.3;
-    const g2=ctx.createRadialGradient(f.x,ry,2,f.x,ry,f.r*1.2);
-    g2.addColorStop(0,f.col);g2.addColorStop(1,'transparent');
+    // draw the glow pool in squashed space so the gradient fades to zero at its edge
+    ctx.save();
+    ctx.translate(f.x+Math.sin(S.time*3)*4,Math.min(ry,H-4));
+    ctx.scale(1,.32);
+    const rr=f.r*1.15;
+    const g2=ctx.createRadialGradient(0,0,0,0,0,rr);
+    g2.addColorStop(0,f.col);g2.addColorStop(1,'rgba(0,0,0,0)');
     ctx.globalAlpha=wa*.15;
-    ctx.beginPath();ctx.ellipse(f.x+Math.sin(S.time*3)*4,Math.min(ry,H-4),f.r*1.1,f.r*.35,0,0,TAU);
-    ctx.fillStyle=g2;ctx.fill();
+    ctx.fillStyle=g2;
+    ctx.beginPath();ctx.arc(0,0,rr,0,TAU);ctx.fill();
+    ctx.restore();
     const depth=Math.min(H-horizonY-10,f.r*2.4);
     ctx.fillStyle=f.col;
     for(let dy=6;dy<depth;dy+=9){
