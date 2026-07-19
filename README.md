@@ -7,6 +7,7 @@ You can play the game online at: **[https://ianworld.github.io/drone-fireworks/]
 
 ## Controls
 - **ARROWS / WASD**: Fly and steer your drone.
+- **Touch (phone/tablet)**: touch and drag anywhere to fly — a virtual joystick follows your finger. On-screen buttons pause and mute.
 - **P**: Pause / Resume the game.
 - **M**: Mute / Unmute sound effects and music.
 

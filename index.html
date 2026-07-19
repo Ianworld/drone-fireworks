@@ -1,8 +1,9 @@
-<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Skyburst — Drone Fireworks Dodge</title></head><body>
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover"><title>Skyburst — Drone Fireworks Dodge</title></head><body>
 <style>
   html,body{margin:0;padding:0;height:100%;background:#04060f;overflow:hidden}
   #wrap{position:fixed;inset:0;font-family:'Courier New',ui-monospace,monospace;color:#dfe8ff}
-  canvas{display:block;width:100%;height:100%}
+  canvas{display:block;width:100%;height:100%;touch-action:none}
+  *{-webkit-tap-highlight-color:transparent}
   .overlay{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;background:rgba(3,5,14,.45);z-index:5;user-select:none}
   .hidden{display:none !important}
   .panel{background:rgba(6,10,26,.82);border:2px solid #2e4a8f;border-radius:14px;padding:26px 40px;box-shadow:0 0 40px rgba(64,120,255,.25), inset 0 0 30px rgba(20,40,110,.25);max-width:min(92vw,640px)}
@@ -24,6 +25,9 @@
   #initials{display:flex;gap:14px;justify-content:center;margin:14px 0}
   .slot{width:52px;height:64px;border:2px solid #3a5cae;border-radius:8px;font-size:40px;line-height:62px;font-weight:bold;color:#eaf3ff;background:#0a1436}
   .slot.cur{border-color:#ffd23e;box-shadow:0 0 16px rgba(255,190,40,.7);color:#ffd23e}
+  .ini-col{display:flex;flex-direction:column;gap:6px;align-items:center}
+  .ud{background:#0a1436;border:1px solid #3a5cae;color:#9fb4e4;border-radius:6px;font-size:13px;padding:3px 12px;cursor:pointer;font-family:inherit}
+  .ud:active{background:#1c3a8c}
 </style>
 <div id="wrap">
 <canvas id="game"></canvas>
@@ -39,7 +43,7 @@
       <button class="btn" id="btnStart">▶ LAUNCH</button>
       <button class="btn small" id="btnScores">HIGH SCORES</button>
     </div>
-    <div class="ctrl">ARROWS / WASD — fly &nbsp;•&nbsp; P — pause &nbsp;•&nbsp; M — mute<br>
+    <div class="ctrl">ARROWS / WASD or TOUCH-DRAG — fly &nbsp;•&nbsp; P — pause &nbsp;•&nbsp; M — mute<br>
     Dodge the fireworks. Survive 25s per level &amp; its finale.<br>5 lives to start · +1 life per level cleared.<br>Later levels: watch for planes, balloons, UFOs &amp; lasers.<br>Grab glowing power-ups — shield, boost, catcher &amp; more.</div>
   </div>
 </div>
@@ -68,8 +72,12 @@
     <div class="big">NEW HIGH SCORE!</div>
     <div id="entryScore" style="letter-spacing:2px"></div>
     <div class="label">ENTER YOUR INITIALS</div>
-    <div id="initials"><div class="slot cur">A</div><div class="slot">A</div><div class="slot">A</div></div>
-    <div class="ctrl">TYPE LETTERS or ↑↓ to change, ←→ to move — ENTER to confirm</div>
+    <div id="initials">
+      <div class="ini-col"><button class="ud" data-i="0" data-d="1">▲</button><div class="slot cur">A</div><button class="ud" data-i="0" data-d="-1">▼</button></div>
+      <div class="ini-col"><button class="ud" data-i="1" data-d="1">▲</button><div class="slot">A</div><button class="ud" data-i="1" data-d="-1">▼</button></div>
+      <div class="ini-col"><button class="ud" data-i="2" data-d="1">▲</button><div class="slot">A</div><button class="ud" data-i="2" data-d="-1">▼</button></div>
+    </div>
+    <div class="ctrl">TYPE LETTERS, tap ▲▼, or ↑↓ ←→ — ENTER / OK to confirm</div>
     <button class="btn" id="btnConfirm">OK</button>
   </div>
 </div>
@@ -845,6 +853,44 @@ window.addEventListener('keydown',e=>{
 window.addEventListener('keyup',e=>{keys[e.key.length===1?e.key.toLowerCase():e.key]=false;});
 window.addEventListener('blur',()=>{if(S.mode==='play')S.paused=true;});
 
+// ---------- touch controls ----------
+const touchCtl={on:false,id:-1,anchorX:0,anchorY:0,curX:0,curY:0};
+let touchUI=('ontouchstart' in window)||(window.matchMedia&&matchMedia('(pointer: coarse)').matches);
+function tpos(t){const r=canvas.getBoundingClientRect();return {x:(t.clientX-r.left)*(W/r.width),y:(t.clientY-r.top)*(H/r.height)};}
+canvas.addEventListener('touchstart',function(e){
+  e.preventDefault();touchUI=true;
+  if(S.mode!=='play')return;
+  for(const t of e.changedTouches){
+    const p=tpos(t);
+    if(Math.hypot(p.x-(W-34),p.y-64)<28){S.paused=!S.paused;continue;}
+    if(Math.hypot(p.x-(W-34),p.y-112)<28){muted=!muted;continue;}
+    if(S.paused){S.paused=false;continue;}
+    if(!touchCtl.on){
+      touchCtl.on=true;touchCtl.id=t.identifier;
+      touchCtl.anchorX=p.x;touchCtl.anchorY=p.y;
+      touchCtl.curX=p.x;touchCtl.curY=p.y;
+    }
+  }
+},{passive:false});
+canvas.addEventListener('touchmove',function(e){
+  e.preventDefault();
+  for(const t of e.changedTouches){
+    if(touchCtl.on&&t.identifier===touchCtl.id){
+      const p=tpos(t);
+      touchCtl.curX=p.x;touchCtl.curY=p.y;
+      const R=52;let dx=p.x-touchCtl.anchorX,dy=p.y-touchCtl.anchorY;
+      const m=Math.hypot(dx,dy);
+      if(m>R){touchCtl.anchorX=p.x-dx/m*R;touchCtl.anchorY=p.y-dy/m*R;} // anchor follows the finger
+    }
+  }
+},{passive:false});
+function touchEnd(e){
+  for(const t of e.changedTouches)
+    if(t.identifier===touchCtl.id){touchCtl.on=false;touchCtl.id=-1;}
+}
+canvas.addEventListener('touchend',touchEnd);
+canvas.addEventListener('touchcancel',touchEnd);
+
 // menu wiring
 const swWrap=document.getElementById('swatches');
 COLORS.forEach((c,i)=>{
@@ -865,6 +911,13 @@ document.getElementById('btnOverScores').addEventListener('click',()=>{S.newRank
 document.getElementById('btnOverMenu').addEventListener('click',()=>{S.mode='menu';show('menu');});
 document.getElementById('btnScoresMenu').addEventListener('click',()=>{S.mode='menu';show('menu');});
 document.getElementById('btnConfirm').addEventListener('click',confirmEntry);
+document.querySelectorAll('#initials .ud').forEach(b=>b.addEventListener('click',()=>{
+  const i=+b.dataset.i,d=+b.dataset.d;entryIdx=i;
+  let c=entryLetters[i].charCodeAt(0)+d;
+  if(c>90)c=65;if(c<65)c=90;
+  entryLetters[i]=String.fromCharCode(c);renderEntry();
+}));
+document.querySelectorAll('#initials .slot').forEach((s,i)=>s.addEventListener('click',()=>{entryIdx=i;renderEntry();}));
 
 // ---------- update ----------
 function update(dt){
@@ -902,6 +955,10 @@ function update(dt){
     let ax=0,ay=0;
     if(keys.ArrowLeft||keys.a)ax-=1;if(keys.ArrowRight||keys.d)ax+=1;
     if(keys.ArrowUp||keys.w)ay-=1;if(keys.ArrowDown||keys.s)ay+=1;
+    if(touchCtl.on){ // analog thrust from the virtual stick
+      ax=clamp(ax+(touchCtl.curX-touchCtl.anchorX)/42,-1,1);
+      ay=clamp(ay+(touchCtl.curY-touchCtl.anchorY)/42,-1,1);
+    }
     drone.vx+=ax*ACCL*dt;drone.vy+=ay*ACCL*dt;
     const dr=Math.exp(-(S.fx.speed>0?2.5:3.1)*dt);drone.vx*=dr;drone.vy*=dr;
     drone.x+=drone.vx*dt;drone.y+=drone.vy*dt;
@@ -1188,6 +1245,23 @@ function draw(){
       ctx.fillStyle='#ff9c1a';ctx.fillText('★ FINALE ★',W/2,54);
     }
     if(muted){ctx.textAlign='left';ctx.fillStyle='#66779f';ctx.font='12px monospace';ctx.fillText('MUTED (M)',18,H-14);}
+    // touch UI: pause/mute buttons + virtual stick
+    if(touchUI){
+      ctx.textAlign='center';ctx.textBaseline='middle';
+      [[64,S.paused?'▶':'❚❚'],[112,muted?'✕':'♪']].forEach(bt=>{
+        ctx.fillStyle='rgba(40,60,120,.35)';ctx.strokeStyle='rgba(120,150,255,.45)';ctx.lineWidth=1.5;
+        ctx.beginPath();ctx.arc(W-34,bt[0],19,0,TAU);ctx.fill();ctx.stroke();
+        ctx.fillStyle='#cfe0ff';ctx.font='bold 13px "Courier New",monospace';
+        ctx.fillText(bt[1],W-34,bt[0]+1);
+      });
+      ctx.textBaseline='alphabetic';ctx.textAlign='left';
+    }
+    if(touchCtl.on&&!S.paused){
+      ctx.strokeStyle='rgba(140,170,255,.4)';ctx.lineWidth=2;
+      ctx.beginPath();ctx.arc(touchCtl.anchorX,touchCtl.anchorY,44,0,TAU);ctx.stroke();
+      ctx.fillStyle='rgba(140,170,255,.28)';
+      ctx.beginPath();ctx.arc(touchCtl.curX,touchCtl.curY,17,0,TAU);ctx.fill();
+    }
     if(S.paused){
       ctx.fillStyle='rgba(2,4,12,.6)';ctx.fillRect(0,0,W,H);
       ctx.fillStyle='#dfe8ff';ctx.textAlign='center';
@@ -1202,6 +1276,8 @@ function draw(){
 let last=performance.now();
 function frame(now){
   const dt=Math.min(.05,(now-last)/1000);last=now;
+  if(window.innerWidth!==W||window.innerHeight!==H)resize(); // heal missed resize events
+
   update(dt);draw();
   requestAnimationFrame(frame);
 }
@@ -1242,7 +1318,8 @@ window.addEventListener('skyburst-ff',function(ev){
   document.body.dataset.dbg=JSON.stringify({mode:S.mode,lvl:S.level,t:+S.levelTime.toFixed(2),
     lives:S.lives,score:Math.floor(S.score),shells:shells.length,parts:parts.length,
     events:events.map(e=>e.kind),finale:S.finale,fx:S.fx,pw:powerups.map(p=>p.kind),boat:boat?boat.msg:null,
-    droneR:drone.r,types:(S.lastTypes||[]).slice(-30)});
+    droneR:drone.r,dx:Math.round(drone.x),dy:Math.round(drone.y),paused:S.paused,touch:touchCtl.on,
+    types:(S.lastTypes||[]).slice(-30)});
 });
 })();
 </script>
