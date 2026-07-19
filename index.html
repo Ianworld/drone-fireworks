@@ -25,6 +25,8 @@
   #initials{display:flex;gap:14px;justify-content:center;margin:14px 0}
   .slot{width:52px;height:64px;border:2px solid #3a5cae;border-radius:8px;font-size:40px;line-height:62px;font-weight:bold;color:#eaf3ff;background:#0a1436}
   .slot.cur{border-color:#ffd23e;box-shadow:0 0 16px rgba(255,190,40,.7);color:#ffd23e}
+  #lvlRow{display:flex;gap:14px;justify-content:center;align-items:center;margin-bottom:4px}
+  #lvlVal{min-width:48px;font-size:24px;font-weight:bold;color:#ffd23e;text-shadow:0 0 10px #ff9c1a;letter-spacing:2px}
   .ini-col{display:flex;flex-direction:column;gap:6px;align-items:center}
   .ud{background:#0a1436;border:1px solid #3a5cae;color:#9fb4e4;border-radius:6px;font-size:13px;padding:3px 12px;cursor:pointer;font-family:inherit}
   .ud:active{background:#1c3a8c}
@@ -39,6 +41,12 @@
     <div class="label">SELECT DRONE COLOR</div>
     <div id="swatches"></div>
     <div id="colorName" style="font-size:12px;letter-spacing:3px;color:#cfe0ff">EMBER</div>
+    <div class="label">STARTING LEVEL</div>
+    <div id="lvlRow">
+      <button class="ud" id="lvlDown">−</button>
+      <div id="lvlVal">1</div>
+      <button class="ud" id="lvlUp">+</button>
+    </div>
     <div>
       <button class="btn" id="btnStart">▶ LAUNCH</button>
       <button class="btn small" id="btnScores">HIGH SCORES</button>
@@ -126,6 +134,9 @@ const COLORS=[
  {name:'VIOLET',c:'#b06bff'},{name:'GOLD',c:'#ffd23e'},{name:'GHOST',c:'#f2f6ff'}];
 let colorIdx=0;
 try{colorIdx=clamp(parseInt(localStorage.getItem(LS_COLOR))||0,0,COLORS.length-1)}catch(e){}
+const LS_STARTLVL='skyburst_startlvl_v1',MAX_STARTLVL=10;
+let startLvl=1;
+try{startLvl=clamp(parseInt(localStorage.getItem(LS_STARTLVL))||1,1,MAX_STARTLVL)}catch(e){}
 
 const drone={x:0,y:0,vx:0,vy:0,r:13,inv:0,rotor:0};
 
@@ -767,7 +778,7 @@ function startGame(){
   pwDue=rnd(6,10);pwPending=false;
   drone.x=W/2;drone.y=H*.42;drone.vx=0;drone.vy=0;drone.inv=2;
   const dbg=(location.hash||'').match(/lvl=(\d+)/);
-  startLevel(dbg?clamp(+dbg[1],1,20):1);hideAll();
+  startLevel(dbg?clamp(+dbg[1],1,20):startLvl);hideAll();
 }
 function startLevel(n){
   S.level=n;S.levelTime=0;S.finale=false;S.mode='play';S.paused=false;
@@ -903,6 +914,15 @@ function updateSwatches(){
   document.getElementById('colorName').textContent=COLORS[colorIdx].name;
 }
 updateSwatches();
+function updateLvlSel(){document.getElementById('lvlVal').textContent=startLvl;}
+function bumpLvl(d){
+  startLvl=clamp(startLvl+d,1,MAX_STARTLVL);
+  try{localStorage.setItem(LS_STARTLVL,String(startLvl))}catch(e){}
+  updateLvlSel();
+}
+document.getElementById('lvlDown').addEventListener('click',()=>bumpLvl(-1));
+document.getElementById('lvlUp').addEventListener('click',()=>bumpLvl(1));
+updateLvlSel();
 document.getElementById('btnStart').addEventListener('click',startGame);
 document.getElementById('btnRetry').addEventListener('click',startGame);
 document.getElementById('btnPlayAgain').addEventListener('click',startGame);
